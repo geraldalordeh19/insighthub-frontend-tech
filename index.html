@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InsightHub — Academic Research Repository</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .hero {
+      padding: 4rem 0 3rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+    .hero h1 { font-size: 3rem; margin-bottom: 0.75rem; }
+    .hero h1 em { color: var(--accent); font-style: italic; }
+    .hero p { color: var(--text2); font-size: 1.1rem; max-width: 500px; margin: 0 auto 2rem; }
+    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    #projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+    .filter-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .results-count { font-size: 0.85rem; color: var(--text3); margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Academic <em>Insights</em><br>All in One Place</h1>
+      <p>Explore student research papers and capstone projects from Academic City University</p>
+      <div class="hero-actions">
+        <a href="register.html" class="btn btn-primary" id="hero-cta">Get Started</a>
+        <a href="#projects" class="btn btn-outline">Browse Projects</a>
+      </div>
+    </div>
+
+    <section id="projects">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search by title, keywords, tags..." />
+        <select id="dept-filter">
+          <option value="">All Departments</option>
+          <option>Computer Science</option>
+          <option>Information Technology</option>
+          <option>Business Administration</option>
+          <option>Engineering</option>
+          <option>Mathematics</option>
+          <option>Other</option>
+        </select>
+        <select id="year-filter">
+          <option value="">All Years</option>
+          <option>2025</option><option>2024</option><option>2023</option>
+          <option>2022</option><option>2021</option><option>2020</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear</button>
+      </div>
+
+      <p class="results-count" id="results-count"></p>
+
+      <div id="projects-grid">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast"></div>
+  <script src="js/api.js"></script>
+  <script>
+    renderNav('home');
+
+    // hide hero CTA if already logged in
+    if (isLoggedIn()) {
+      document.getElementById('hero-cta').textContent = 'Submit a Project';
+      document.getElementById('hero-cta').href = 'submit.html';
+    }
+
+    let debounceTimer;
+    document.getElementById('search-input').addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadProjects, 400);
+    });
+    document.getElementById('dept-filter').addEventListener('change', loadProjects);
+    document.getElementById('year-filter').addEventListener('change', loadProjects);
+
+    function clearFilters() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('dept-filter').value = '';
+      document.getElementById('year-filter').value = '';
+      loadProjects();
+    }
+
+    async function loadProjects() {
+      const search = document.getElementById('search-input').value.trim();
+      const department = document.getElementById('dept-filter').value;
+      const year = document.getElementById('year-filter').value;
+
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (department) params.set('department', department);
+      if (year) params.set('year', year);
+
+      const grid = document.getElementById('projects-grid');
+      grid.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+      try {
+        const projects = await apiFetch(`/projects?${params}`);
+        document.getElementById('results-count').textContent =
+          `${projects.length} project${projects.length !== 1 ? 's' : ''} found`;
+
+        if (projects.length === 0) {
+          grid.innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1">
+              <div class="icon">📚</div>
+              <p>No projects found. Try adjusting your search.</p>
+            </div>`;
+          return;
+        }
+
+        grid.innerHTML = projects.map(p => `
+          <div class="project-card" onclick="window.location.href='project.html?id=${p.id}'">
+            <div class="meta">
+              <span>${p.department || 'General'}</span>
+              <span>${p.year || ''}</span>
+              <span>${timeAgo(p.created_at)}</span>
+            </div>
+            <h3>${p.title}</h3>
+            <p class="abstract">${p.abstract || 'No description available.'}</p>
+            <div class="tags">
+              ${renderTags(p.tags)}
+              ${renderTags(p.technologies)}
+            </div>
+            <div style="margin-top:0.75rem;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:0.8rem;color:var(--text3)">by ${p.author_name || p.student_name || 'Unknown'}</span>
+              <span style="font-size:0.8rem;color:var(--text3)">💬 ${p.comment_count} &nbsp; 🔖 ${p.bookmark_count}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        grid.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1">${err.message}</div>`;
+      }
+    }
+
+    loadProjects();
+  </script>
+</body>
+</html>

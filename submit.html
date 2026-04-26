@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Project — InsightHub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .submit-wrap { max-width: 700px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .submit-wrap h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .submit-wrap > p { color: var(--text2); margin-bottom: 2rem; }
+    .form-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      margin-top: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title:first-child { margin-top: 0; }
+    .tip {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+
+  <div class="submit-wrap">
+    <h1>Submit a Project</h1>
+    <p>Share your research paper or capstone project with the Academic City community.</p>
+
+    <div id="error-msg" class="alert alert-error hidden"></div>
+    <div id="success-msg" class="alert alert-success hidden"></div>
+
+    <div class="form-card">
+      <p class="section-title">Project information</p>
+
+      <div class="form-group">
+        <label>Project title *</label>
+        <input type="text" id="title" placeholder="e.g. Predictive Analytics for Student Performance" />
+      </div>
+
+      <div class="form-group">
+        <label>Your name (as it should appear)</label>
+        <input type="text" id="student_name" placeholder="Full name" />
+        <p class="tip">Leave blank to use your account name.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Abstract / Description *</label>
+        <textarea id="abstract" rows="5" placeholder="Describe your project, its objectives, methodology, and findings..."></textarea>
+      </div>
+
+      <p class="section-title">Academic details</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Department *</label>
+          <select id="department">
+            <option value="">Select department</option>
+            <option>Computer Science</option>
+            <option>Information Technology</option>
+            <option>Business Administration</option>
+            <option>Engineering</option>
+            <option>Mathematics</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Year of completion</label>
+          <select id="year">
+            <option value="">Select year</option>
+            <option>2025</option><option>2024</option><option>2023</option>
+            <option>2022</option><option>2021</option><option>2020</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Supervisor name</label>
+        <input type="text" id="supervisor" placeholder="e.g. Dr. Amara Kofi" />
+      </div>
+
+      <p class="section-title">Links and files</p>
+
+      <div class="form-group">
+        <label>PDF / Document link</label>
+        <input type="url" id="file_url" placeholder="https://drive.google.com/... or any public link" />
+        <p class="tip">Paste a Google Drive, Dropbox, or any direct PDF link.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Demo / Video link (optional)</label>
+        <input type="url" id="demo_link" placeholder="https://youtube.com/..." />
+      </div>
+
+      <p class="section-title">Discoverability</p>
+
+      <div class="form-group">
+        <label>Tags (comma-separated)</label>
+        <input type="text" id="tags" placeholder="e.g. machine learning, education, Ghana" />
+        <p class="tip">Keywords that help others find your project.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Technologies used (comma-separated)</label>
+        <input type="text" id="technologies" placeholder="e.g. Python, TensorFlow, React, PostgreSQL" />
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <button class="btn btn-primary" style="width:100%;justify-content:center" id="submit-btn" onclick="submitProject()">
+          Submit for review
+        </button>
+        <p class="tip" style="text-align:center;margin-top:8px">Your project will be reviewed by an admin before going public.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="js/api.js"></script>
+  <script>
+    renderNav('submit');
+    if (!requireAuth()) { /* redirects */ }
+
+    // Pre-fill student name from account
+    const user = getUser();
+    if (user) document.getElementById('student_name').value = user.name;
+
+    async function submitProject() {
+      const errEl = document.getElementById('error-msg');
+      const sucEl = document.getElementById('success-msg');
+      const btn   = document.getElementById('submit-btn');
+
+      errEl.classList.add('hidden');
+      sucEl.classList.add('hidden');
+
+      const title      = document.getElementById('title').value.trim();
+      const abstract   = document.getElementById('abstract').value.trim();
+      const department = document.getElementById('department').value;
+
+      if (!title || !abstract || !department) {
+        errEl.textContent = 'Title, abstract, and department are required.';
+        return errEl.classList.remove('hidden');
+      }
+
+      const payload = {
+        title,
+        abstract,
+        department,
+        supervisor:    document.getElementById('supervisor').value.trim(),
+        year:          document.getElementById('year').value || null,
+        file_url:      document.getElementById('file_url').value.trim(),
+        demo_link:     document.getElementById('demo_link').value.trim(),
+        tags:          document.getElementById('tags').value.trim(),
+        technologies:  document.getElementById('technologies').value.trim(),
+        student_name:  document.getElementById('student_name').value.trim()
+      };
+
+      btn.textContent = 'Submitting…';
+      btn.disabled = true;
+
+      try {
+        await apiFetch('/projects', { method: 'POST', body: JSON.stringify(payload) });
+
+        sucEl.textContent = '✓ Project submitted successfully! It will appear publicly once an admin approves it.';
+        sucEl.classList.remove('hidden');
+        showToast('Project submitted for review!', 'success');
+
+        // Reset form
+        ['title','abstract','supervisor','file_url','demo_link','tags','technologies'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('department').value = '';
+        document.getElementById('year').value = '';
+
+        btn.textContent = 'Submit another project';
+        btn.disabled = false;
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+        btn.textContent = 'Submit for review';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

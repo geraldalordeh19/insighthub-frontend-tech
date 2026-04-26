@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project — InsightHub</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .project-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 2rem;
+      padding: 2.5rem 0;
+      align-items: start;
+    }
+    @media(max-width:768px){
+      .project-layout { grid-template-columns: 1fr; }
+    }
+    .project-title { font-size: 2.2rem; margin-bottom: 1rem; line-height: 1.2; }
+    .project-meta { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--text2); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .project-meta span { display: flex; align-items: center; gap: 4px; }
+    .abstract-section h3 { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.75rem; }
+    .abstract-text { color: var(--text2); line-height: 1.8; margin-bottom: 2rem; white-space: pre-wrap; }
+    .sidebar-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; }
+    .sidebar-card h4 { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 1rem; }
+    .sidebar-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .sidebar-row:last-child { border-bottom: none; }
+    .sidebar-row .key { color: var(--text2); }
+    .sidebar-row .val { color: var(--text); text-align: right; max-width: 160px; word-break: break-word; }
+    .comment { padding: 1rem 0; border-bottom: 1px solid var(--border); }
+    .comment:last-child { border-bottom: none; }
+    .comment .commenter { font-weight: 500; font-size: 0.875rem; margin-bottom: 4px; }
+    .comment .time { font-size: 0.75rem; color: var(--text3); margin-left: 8px; }
+    .comment p { color: var(--text2); font-size: 0.9rem; line-height: 1.6; }
+    .comment-form textarea { width: 100%; min-height: 80px; }
+    #bookmark-btn.bookmarked { background: var(--accent-dim); color: var(--accent); border-color: rgba(200,169,110,0.3); }
+  </style>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+
+  <div class="container">
+    <div id="project-content">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="js/api.js"></script>
+  <script>
+    renderNav('');
+
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('id');
+
+    if (!projectId) {
+      document.getElementById('project-content').innerHTML =
+        '<div class="alert alert-error" style="margin:2rem 0">No project ID specified.</div>';
+    } else {
+      loadProject();
+    }
+
+    let currentProject = null;
+
+    async function loadProject() {
+      try {
+        const p = await apiFetch(`/projects/${projectId}`);
+        currentProject = p;
+        renderProject(p);
+
+        // Check bookmark status
+        if (isLoggedIn()) {
+          const bm = await apiFetch(`/bookmarks/check/${projectId}`);
+          const btn = document.getElementById('bookmark-btn');
+          if (btn && bm.bookmarked) {
+            btn.classList.add('bookmarked');
+            btn.textContent = '🔖 Saved';
+          }
+        }
+      } catch (err) {
+        document.getElementById('project-content').innerHTML =
+          `<div class="alert alert-error" style="margin:2rem 0">${err.message}</div>`;
+      }
+    }
+
+    function renderProject(p) {
+      const loggedIn = isLoggedIn();
+      const links = [];
+      if (p.file_url) links.push(`<a href="${p.file_url}" target="_blank" class="btn btn-primary">📄 View PDF</a>`);
+      if (p.demo_link) links.push(`<a href="${p.demo_link}" target="_blank" class="btn btn-outline">▶ Demo / Video</a>`);
+
+      document.getElementById('project-content').innerHTML = `
+        <div class="project-layout">
+          <div class="main-col">
+            <div style="margin-bottom:1rem">
+              <a href="index.html" style="font-size:0.85rem;color:var(--text3)">← Back to projects</a>
+            </div>
+            <h1 class="project-title">${p.title}</h1>
+            <div class="project-meta">
+              <span>🏫 ${p.department || 'General'}</span>
+              ${p.year ? `<span>📅 ${p.year}</span>` : ''}
+              ${p.supervisor ? `<span>👤 Supervisor: ${p.supervisor}</span>` : ''}
+              <span>🕐 ${timeAgo(p.created_at)}</span>
+            </div>
+            <div class="tags" style="margin-bottom:1.5rem">
+              ${renderTags(p.tags)}
+              ${renderTags(p.technologies)}
+            </div>
+            <div class="abstract-section">
+              <h3>Abstract</h3>
+              <p class="abstract-text">${p.abstract || 'No description provided.'}</p>
+            </div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2rem">
+              ${links.join('')}
+              ${loggedIn ? `<button id="bookmark-btn" class="btn btn-outline" onclick="toggleBookmark()">🔖 Save</button>` : ''}
+            </div>
+
+            <!-- Comments -->
+            <div>
+              <h3 style="font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;margin-bottom:1.25rem">
+                Comments &amp; Feedback <span style="color:var(--text3);font-weight:400">(${p.comments.length})</span>
+              </h3>
+
+              ${loggedIn ? `
+                <div class="comment-form" style="margin-bottom:1.5rem">
+                  <div class="form-group">
+                    <textarea id="comment-input" placeholder="Leave a comment or feedback on this project..."></textarea>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="postComment()">Post comment</button>
+                </div>
+              ` : `<p style="font-size:0.875rem;color:var(--text3);margin-bottom:1.5rem"><a href="login.html">Sign in</a> to leave a comment.</p>`}
+
+              <div id="comments-list">
+                ${p.comments.length === 0
+                  ? '<p style="color:var(--text3);font-size:0.875rem">No comments yet. Be the first!</p>'
+                  : p.comments.map(renderComment).join('')
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar">
+            <div class="sidebar-card">
+              <h4>Project details</h4>
+              ${row('Author', p.author_name || p.student_name || 'Unknown')}
+              ${p.department ? row('Department', p.department) : ''}
+              ${p.year ? row('Year', p.year) : ''}
+              ${p.supervisor ? row('Supervisor', p.supervisor) : ''}
+              ${row('Submitted', timeAgo(p.created_at))}
+            </div>
+            ${p.file_url ? `
+              <div class="sidebar-card">
+                <h4>Resources</h4>
+                <a href="${p.file_url}" target="_blank" style="display:block;font-size:0.875rem;color:var(--accent);margin-bottom:0.5rem">📄 Full document →</a>
+                ${p.demo_link ? `<a href="${p.demo_link}" target="_blank" style="display:block;font-size:0.875rem;color:var(--accent)">▶ Demo / Video →</a>` : ''}
+              </div>
+            ` : ''}
+            <div class="sidebar-card">
+              <h4>Stats</h4>
+              ${row('Comments', p.comments.length)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function row(key, val) {
+      return `<div class="sidebar-row"><span class="key">${key}</span><span class="val">${val}</span></div>`;
+    }
+
+    function renderComment(c) {
+      return `
+        <div class="comment">
+          <div class="commenter">${c.commenter_name || 'Anonymous'} <span class="time">${timeAgo(c.created_at)}</span></div>
+          <p>${c.content}</p>
+        </div>
+      `;
+    }
+
+    async function postComment() {
+      if (!requireAuth()) return;
+      const content = document.getElementById('comment-input').value.trim();
+      if (!content) return showToast('Please write something first.', 'error');
+
+      try {
+        const comment = await apiFetch('/comments', {
+          method: 'POST',
+          body: JSON.stringify({ project_id: projectId, content })
+        });
+
+        document.getElementById('comment-input').value = '';
+        const list = document.getElementById('comments-list');
+        const noComment = list.querySelector('p');
+        if (noComment) noComment.remove();
+        list.insertAdjacentHTML('afterbegin', renderComment({ ...comment, commenter_name: getUser().name }));
+        showToast('Comment posted!', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleBookmark() {
+      if (!requireAuth()) return;
+      const btn = document.getElementById('bookmark-btn');
+
+      try {
+        const result = await apiFetch('/bookmarks', {
+          method: 'POST',
+          body: JSON.stringify({ project_id: projectId })
+        });
+
+        if (result.bookmarked) {
+          btn.classList.add('bookmarked');
+          btn.textContent = '🔖 Saved';
+          showToast('Project saved to bookmarks', 'success');
+        } else {
+          btn.classList.remove('bookmarked');
+          btn.textContent = '🔖 Save';
+          showToast('Bookmark removed', 'info');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
