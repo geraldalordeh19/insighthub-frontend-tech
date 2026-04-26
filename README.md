@@ -9,7 +9,7 @@ InsightHub is a centralized digital platform for Academic City University studen
 
 ## Deployment Link
 
-- **Frontend (GitHub Pages):** `https://geraldalordeh19.github.io/insighthub-frontend`
+- **Frontend (GitHub Pages):** `https://geraldalordeh19.github.io/insighthub-frontend-tech`
 - **Backend API (Render):** `https://insighthub-backend-tech.onrender.com`
 
 ## Login Details (Test Accounts)
