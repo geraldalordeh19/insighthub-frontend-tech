@@ -1,3 +1,4 @@
+Gerald Klenam Alordeh-Heymann-10022440044
 # InsightHub — Frontend
 
 Academic Research and Capstone Repository — Frontend (HTML, CSS, JavaScript)
@@ -8,15 +9,15 @@ InsightHub is a centralized digital platform for Academic City University studen
 
 ## Deployment Link
 
-- **Frontend (GitHub Pages):** `https://YOUR_USERNAME.github.io/insighthub-frontend`
-- **Backend API (Render):** `https://insighthub-backend.onrender.com`
+- **Frontend (GitHub Pages):** `https://geraldalordeh19.github.io/insighthub-frontend`
+- **Backend API (Render):** `https://insighthub-backend-tech.onrender.com`
 
 ## Login Details (Test Accounts)
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@insighthub.com | admin123 |
-| Student | student@insighthub.com | student123 |
+| Admin | admin@test.com | admin123 |
+| Student | student@test.com | student123 |
 
 ## Feature Checklist
 
