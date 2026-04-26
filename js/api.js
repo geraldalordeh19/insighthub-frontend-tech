@@ -1,6 +1,6 @@
 // ===== CONFIG =====
 // IMPORTANT: Change this to your Render backend URL after deploying
-const API_BASE = 'https://insighthub-backend-tech.onrender.com';
+const API_BASE = 'https://insighthub-backend-tech.onrender.com/api';
 // For local development use: const API_BASE = 'http://localhost:5000/api';
 
 // ===== AUTH HELPERS =====
